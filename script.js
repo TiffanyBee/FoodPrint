@@ -1,4 +1,56 @@
-const DATA_URL = "https://ourworldindata.org/grapher/ghg-per-protein-poore.metadata.json?v=1&csvType=full&useColumnShortNames=true";
+// object of units, the numbers being their conversion to kilograms
+const units = {
+    gram: .001,
+    grams: .001,
+    g: .001,
+
+    kilogram: 1,
+    kilograms: 1,
+    kg: 1,
+
+    ounce: 0.02835,
+    ounces: 0.02835,
+    oz: 0.02835,
+
+    pound: .4536,
+    pounds: .4536,
+    lb: .4536,
+    lbs: .4536,
+
+    teaspoon: .005,
+    teaspoons: .005,
+    tsp: .005,
+
+    tablespoon: .015,
+    tablespoons: .015,
+    tbsp: .015,
+
+    cup: 2.40,
+    cups: 2.40
+
+}
+
+function parseQuantity(numberString) {
+    let num = 0
+    if (numberString.includes(" ")) {
+        let parts = numberString.split(" ")
+        let whole = parseInt(parts[0]);
+        let fraction = eval(parts[1]);
+        num += whole + fraction
+        print(num, "complex fraction")
+    }
+        // if just fraction
+    else if (numberString.includes("/")) {
+        num += eval(numberString)
+        print(num, "fraction")
+    }
+    else {
+        num += parseFloat(numberString)
+        print(num, "regular")
+    }
+    return num   
+    
+}
 
 var Recipes = []
 function Recipe(name, ingredients, data) {
@@ -15,8 +67,9 @@ function Ingredient(food, amount, unit, fullIngredient) {
     this.amount = amount;
     this.unit = unit;
     this.fullIngredient = fullIngredient;
+    const kilograms = units[unit]
     this.info = function() {
-        return [ food, amount, unit, fullIngredient ]
+        return [ food, amount, unit, fullIngredient, kilograms ]
     }
 }
 
@@ -25,10 +78,10 @@ document.getElementById("analyze").addEventListener("click", analyzeRecipe);
 function analyzeRecipe() {
     var recipeNameInput = document.getElementById("recipe-name");
     var recipeName = recipeNameInput.value
-    var ingredientsInput = document.getElementById("ingredients")
-
+    var ingredientsInput = document.getElementById("ingredients").value.toLowerCase().trim();
+    console.log(ingredientsInput)
     // turning recipe ingredients into elements in array
-    ingredientsInput = ingredientsInput.value.split("\n");
+    ingredientsInput = ingredientsInput.split("\n");
     for (let i = 0; i < ingredientsInput.length; i++) {
         if (ingredientsInput[i] == "") {
             ingredientsInput.splice(i, 1);
@@ -42,8 +95,8 @@ function analyzeRecipe() {
         var fullIngredient = ingredientsInput[i];
         var tempIngredient = fullIngredient;
 
-        var amount;
-        var unit;
+        var amount = 0;
+        var unit = null;
         var food;
 
         //remove unnecesary informaiton: paranthesis, commas, or, of
@@ -60,44 +113,48 @@ function analyzeRecipe() {
             tempIngredient = tempIngredient.replace("of", "");
         }
 
-        //easier to parse as a list
-        tempIngredient = tempIngredient.split(" ");
+
+        // find amount
 
 
-        //testing if 1st and 2nd word are numbers to calculate amount 
+        // identifies 1 1/2, 1/2, 1
+        amountstr  = tempIngredient.match(
+            /(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)/
+        )[0].trim()
 
-        if (/\d/g.test(tempIngredient[0])) {
-            console.log(tempIngredient[0])
-            try {
-                amount = parseFloat(eval(tempIngredient[0]));
-            } catch {
-                console.log("cannot evaluate");
-                amount = 1;
-            }
-            tempIngredient.splice(0, 1);
-        }
-        if (/\d/g.test(tempIngredient[1])) {
-            console.log(tempIngredient[1]);
-            try {
-                amount += eval(tempIngredient[1]);
-            } catch {
-                console.log("cannot evaluate");
-                //amount stays the same
-            }
-            tempIngredient.splice(0, 1);
-        }
+        amount = parseQuantity(amountstr);
+        print(amount)
+        tempIngredient = tempIngredient.replace(amountstr, "").trim()
+
+        print(amountstr)
         
-       
-        console.log(tempIngredient);
         
-        unit = tempIngredient[0];
-        tempIngredient.splice(0, 1);
+        
+        print(tempIngredient)
+        
 
-        food = tempIngredient.join(" ").trim();
+        // find unit value, if any
+        for (const possibleUnit in units) 
+            {
+            if (tempIngredient.startsWith(possibleUnit + " ")) {
+                unit = possibleUnit;
+                tempIngredient = tempIngredient.slice(unit.length)
+
+                break;
+            }
+        }
+        if (!unit) {
+            unit = "item"
+        }
+
+        // the rest will be food
+        food = tempIngredient.trim();
 
         var ingredient = new Ingredient(food, amount, unit, fullIngredient);
         console.log(ingredient.info());
         ingredients.push(new Ingredient(food, amount, unit, fullIngredient));
+
+        //
 
     }
     Recipes.push(new Recipe(recipeName, ingredients));
