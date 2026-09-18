@@ -1,3 +1,5 @@
+//import Papa from 'papaparse';
+
 // object of units, the numbers being their conversion to kilograms
 const units = {
     gram: .001,
@@ -21,13 +23,51 @@ const units = {
     teaspoons: .005,
     tsp: .005,
 
-    tablespoon: .015,
+    "tablespoon": .015,
     tablespoons: .015,
     tbsp: .015,
 
     cup: 2.40,
     cups: 2.40
 
+}
+
+const csv_file = "test_footprint_of_foods.csv" 
+var food_footprints = [];
+function parseCSV(data) {
+    const parsed = Papa.parse(data, {
+        header: true,
+        skipEmptyLines: true,
+
+        transform: (value, headerName) => {
+            if (headerName == "C02_per_kg") {
+                return parseFloat(value)
+            }
+            else {
+                return value.toLowerCase()
+            }
+        }
+    })
+    return parsed
+}
+
+
+fetch(csv_file)
+    .then(response => response.text())
+    .then(data => {
+        food_footprints = parseCSV(data).data
+       
+        console.log(food_footprints)
+    })
+
+
+function getCarbonFootprint(user_food, amount_kg) {
+    console.log(user_food)
+    matchedFood = food_footprints.find((foodprint) => foodprint.food_name == user_food)
+    console.log(matchedFood)
+
+    console.log(matchedFood.C02_per_kg * amount_kg)
+   
 }
 
 function parseQuantity(numberString) {
@@ -37,16 +77,16 @@ function parseQuantity(numberString) {
         let whole = parseInt(parts[0]);
         let fraction = eval(parts[1]);
         num += whole + fraction
-        print(num, "complex fraction")
+        
     }
         // if just fraction
     else if (numberString.includes("/")) {
         num += eval(numberString)
-        print(num, "fraction")
+        
     }
     else {
         num += parseFloat(numberString)
-        print(num, "regular")
+       
     }
     return num   
     
@@ -67,14 +107,27 @@ function Ingredient(food, amount, unit, fullIngredient) {
     this.amount = amount;
     this.unit = unit;
     this.fullIngredient = fullIngredient;
-    const kilograms = units[unit]
+    this.amountkg = amount * units[unit]
+
+
+    // find carbon footprint
+    //console.log(this.unit)
+    const matchedFood = food_footprints.find((foodprint) => foodprint.food_name == food)
+    if (matchedFood != undefined) {
+        this.carbonFootprint = this.amountkg * matchedFood.C02_per_kg
+    } else {
+        this.carbonFootprint = null
+    }
+    
+    
     this.info = function() {
-        return [ food, amount, unit, fullIngredient, kilograms ]
+        return [ food, amount, unit, fullIngredient ]
     }
 }
 
-document.getElementById("analyze").addEventListener("click", analyzeRecipe);
 
+// when analyze is clicked save values of ingredients 
+document.getElementById("analyze-recipe").addEventListener("click", analyzeRecipe);
 function analyzeRecipe() {
     var recipeNameInput = document.getElementById("recipe-name");
     var recipeName = recipeNameInput.value
@@ -115,22 +168,13 @@ function analyzeRecipe() {
 
 
         // find amount
-
-
         // identifies 1 1/2, 1/2, 1
         amountstr  = tempIngredient.match(
             /(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)/
         )[0].trim()
 
         amount = parseQuantity(amountstr);
-        print(amount)
         tempIngredient = tempIngredient.replace(amountstr, "").trim()
-
-        print(amountstr)
-        
-        
-        
-        print(tempIngredient)
         
 
         // find unit value, if any
@@ -146,6 +190,7 @@ function analyzeRecipe() {
         if (!unit) {
             unit = "item"
         }
+        console.log(unit)
 
         // the rest will be food
         food = tempIngredient.trim();
