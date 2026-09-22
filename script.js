@@ -67,7 +67,6 @@ function getCarbonFootprint(user_food, amount_kg) {
     console.log(matchedFood)
 
     console.log(matchedFood.C02_per_kg * amount_kg)
-   
 }
 
 function parseQuantity(numberString) {
@@ -97,6 +96,23 @@ function Recipe(name, ingredients, data) {
     this.name = name;
     this.ingredients = ingredients;
     this.data = data;
+    this.total_C02 = 0;
+
+    for ( let i = 0; i<this.ingredients.length; i++ ) {
+        if (ingredients[i].carbonFootprint != null) {
+            this.total_C02 += this.ingredients[i].carbonFootprint;
+            console.log(ingredients[i], ingredients[i].carbonFootprint)
+        }
+    }
+
+    this.avg_C02 = this.total_C02/ingredients.length
+    this.climate_score = 1 - this.avg_C02 / 10;
+    //if (this.climate_score > 1) {
+      //  this.climate_score = 1;      
+    //} else if (this.climate_score < 0) {
+      //  this.climate_score = 0;
+    //}
+
     this.info = function() {
         return [ name, ingredients, data]
     }
@@ -114,7 +130,7 @@ function Ingredient(food, amount, unit, fullIngredient) {
     //console.log(this.unit)
     const matchedFood = food_footprints.find((foodprint) => foodprint.food_name == food)
     if (matchedFood != undefined) {
-        this.carbonFootprint = this.amountkg * matchedFood.C02_per_kg
+        this.carbonFootprint = +(this.amountkg * matchedFood.C02_per_kg).toFixed(2)
     } else {
         this.carbonFootprint = null
     }
@@ -197,7 +213,7 @@ function analyzeRecipe() {
 
         var ingredient = new Ingredient(food, amount, unit, fullIngredient);
         console.log(ingredient.info());
-        ingredients.push(new Ingredient(food, amount, unit, fullIngredient));
+        ingredients.push(ingredient);
 
         //
 
